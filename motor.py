@@ -1,4 +1,5 @@
 from RPi import GPIO
+from time import sleep
 
 class Motor(object):
 

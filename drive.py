@@ -32,14 +32,13 @@ while True:
         motor.forward_left()
     elif (key == "d"): 
         motor.forward_right()
-    elif (key == "t"):
+    elif (key == "space"):
         motor.stop()
     elif (key == "x"):
         print("Program terminated")
         break
     else:
         motor.stop()
-    time.sleep(0.1)
     key = ""
 
 GPIO.cleanup()
