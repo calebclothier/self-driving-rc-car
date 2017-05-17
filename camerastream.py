@@ -7,7 +7,7 @@ import picamera
 def connect():
     # Connect a client socket to the Macbook-based server
     client_socket = socket.socket()
-    client_socket.connect(('SERVER_NAME', 8000))
+    client_socket.connect(('192.168.1.255', 8000))
 
 def stream(stream_length):
     # Make a file-like object out of the connection
