@@ -3,66 +3,70 @@ import time
 import socket
 import struct
 
-# Create a socket and bind to host
-client_socket = socket.socket()
-client_socket.connect(('192.168.1.15', 8002))
+class UltrasonicSensor(object):
 
-def measure():
-    # set Trigger to HIGH
-    GPIO.output(GPIO_TRIGGER, True)
-
-    # set Trigger after 0.01ms to LOW
-    time.sleep(0.00001)
-    GPIO.output(GPIO_TRIGGER, False)
- 
-    start = time.time()
-    stop = time.time()
- 
-    # save start time
-    while GPIO.input(GPIO_ECHO) == 0:
+    def __init__(self):
+        #GPIO Mode (BOARD / BCM)
+        GPIO.setmode(GPIO.BOARD)
+        #set GPIO Pins
+        self.GPIO_TRIGGER = 16
+        self.GPIO_ECHO = 18
+        #set GPIO direction (IN / OUT)
+        GPIO.setup(self.GPIO_TRIGGER, GPIO.OUT)
+        GPIO.setup(self.GPIO_ECHO, GPIO.IN)
+        
+    def measure(self):
+        # Set Trigger to HIGH
+        GPIO.output(self.GPIO_TRIGGER, True)
+        # Set Trigger after 0.01ms to LOW
+        time.sleep(0.00001)
+        GPIO.output(self.GPIO_TRIGGER, False)
+        # Initialize start and stop times
         start = time.time()
-    # save time of arrival
-    while GPIO.input(GPIO_ECHO) == 1:
         stop = time.time()
- 
-    # time difference between start and arrival
-    time_elapsed = stop - start
-    # multiply with the sonic speed (34300 cm/s)
-    # and divide by 2, because there and back
-    distance = (time_elapsed * 34300) / 2
- 
-    return distance
+        # Save start time
+        while GPIO.input(self.GPIO_ECHO) == 0:
+            start = time.time()
+        # Save time of arrival
+        while GPIO.input(self.GPIO_ECHO) == 1:
+            stop = time.time()
+        # Time difference between start and arrival
+        time_elapsed = stop - start
+        # Multiply with the sonic speed (34300 cm/s)
+        # and divide by 2, because there and back
+        distance = (time_elapsed * 34300) / 2
+        return distance
 
-def measure_average():
-    # Record the distance at three times and average the results
-    distance1 = measure()
-    time.sleep(0.1)
-    distance2 = measure()
-    time.sleep(0.1)
-    distance3 = measure()
-    average = (distance1 + distance2 + distance3) / 3
-    
-    return average
+    def measure_average(self):
+        # Record the distance at three times and average the results
+        distance1 = measure()
+        time.sleep(0.1)
+        distance2 = measure()
+        time.sleep(0.1)
+        distance3 = measure()
+        average = (distance1 + distance2 + distance3) / 3
+        return average
 
-#GPIO Mode (BOARD / BCM)
-GPIO.setmode(GPIO.BOARD)
- 
-#set GPIO Pins
-GPIO_TRIGGER = 16
-GPIO_ECHO = 18
- 
-#set GPIO direction (IN / OUT)
-GPIO.setup(GPIO_TRIGGER, GPIO.OUT)
-GPIO.setup(GPIO_ECHO, GPIO.IN)
+class UltrasonicClient(object):
 
-try:
-    while True:
-        distance = measure_average()
-        print('Distance: %.1f' % distance)
-        client_socket.send(struct.pack("f", distance))
-        time.sleep(0.5)
-finally:
-    client_socket.close()
-    GPIO.cleanup()
+    def __init__(self):
+        # Create a socket and bind to host
+        self.client_socket = socket.socket()
+        self.client_socket.connect(('192.168.1.15', 8002))
+        self.sensor = UltrasonicSensor()
+
+    def stream(self)
+        # Send distance data to server on another computer
+        try:
+            while True:
+                distance = self.sensor.measure_average()
+                print('Distance: %.1f' % distance)
+                self.client_socket.send(struct.pack("f", distance))
+                time.sleep(0.5)
+        finally:
+            self.client_socket.close()
+            GPIO.cleanup()
+
+
 
 
