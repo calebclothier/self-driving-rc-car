@@ -15,15 +15,15 @@ class Client():
         # Make a file-like object out of the connection
         connection = self.client_socket.makefile('wb')
         try:
+            # Initialize camera and allow some warmup time, create stream
             self.camera = picamera.PiCamera()
             self.camera.resolution = (320, 240)
-            # Start a preview and let camera warm up
-            self.camera.start_preview()
+            self.camera.framerate = 10
             time.sleep(2)
-
             self.start = time.time()
             self.stream = io.BytesIO()
-            for foo in self.camera.capture_continuous(self.stream, 'jpeg'):
+            for frame in self.camera.capture_continuous(self.stream, 'jpeg',
+                                                        use_video_port = True):
                 # Write the length of the capture to the stream
                 # and flush to make sure it gets sent
                 connection.write(struct.pack('<L', self.stream.tell()))
