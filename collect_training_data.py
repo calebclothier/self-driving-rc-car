@@ -22,6 +22,8 @@ class CollectTrainingData(object):
 		self.temp_label = np.zeros((4, 4))
 		for i in range(4):
 			self.temp_label[i,i] = 1
+		# Start the stream
+		self.stream()
 
 	def get_keys(self):
 		fd = sys.stdin.fileno()
@@ -65,6 +67,8 @@ class CollectTrainingData(object):
 					self.train_labels = np.vstack(self.train_labels, temp_label[2])
 				elif (key == "space"):
 					self.train_labels = np.vstack(self.train_labels, temp_label[3])
+				elif (key == 'x'):
+					break
 				# Increase frame number
 				frame += 1
 
@@ -79,3 +83,8 @@ class CollectTrainingData(object):
 			self.connection.close()
 			self.server_socket.close()
 			self.client_socket.close()
+
+if __name__ == '__main__':
+	CollectTrainingData()
+
+
