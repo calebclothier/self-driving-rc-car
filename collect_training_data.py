@@ -1,6 +1,7 @@
 import struct
 import socket
 import time, sys, termios, tty
+import io
 import numpy as np
 import cv2
 
@@ -37,8 +38,27 @@ class CollectTrainingData(object):
 
 	def stream(self):
 		try:
-			frame = 1
+			frame = 0
 			while True:
+				# Get key input, add to label array, and send to the RPi
+				key = self.get_keys()
+				self.client_socket.send(key.encode())
+				if (key == "w"):
+					self.train_labels = np.vstack((self.train_labels, self.temp_label[0]))
+					last = self.temp_label[0]
+				elif (key == "a"):
+					self.train_labels = np.vstack((self.train_labels, self.temp_label[1]))
+					last = self.temp_label[1]
+				elif (key == "d"): 
+					self.train_labels = np.vstack((self.train_labels, self.temp_label[2]))
+					last = self.temp_label[2]
+				elif (key == "space"):
+					self.train_labels = np.vstack((self.train_labels, self.temp_label[3]))
+					last = self.temp_label[3]
+				elif (key == 'x'):
+					break
+				else:
+					self.train_labels = np.vstack((self.train_labels, last))
 				# Read the length of the image as a 32-bit unsigned int. If the
 				# length is zero, quit the loop
 				image_len = struct.unpack('<L', self.connection.read(struct.calcsize('<L')))[0]
@@ -53,31 +73,21 @@ class CollectTrainingData(object):
 				data = np.fromstring(image_stream.getvalue(), dtype=np.uint8)
 				image = cv2.imdecode(data, 1)
 				# Save the image
-				cv2.imwrite('training_images/frame_{}.jpg'.format(frame), image)
+				if frame > 0:
+					cv2.imwrite('training_images/frame_{}.jpg'.format(frame), image)
 				# Show the image
-				cv2.imshow("Frame", self.image)
-				# Get key input, add to label array, and send to the RPi
-				key = self.get_keys()
-				self.client_socket.send(key.encode())
-				if (key == "w"):
-					self.train_labels = np.vstack(self.train_labels, temp_label[0])
-				elif (key == "a"):
-					self.train_labels = np.vstack(self.train_labels, temp_label[1])
-				elif (key == "d"): 
-					self.train_labels = np.vstack(self.train_labels, temp_label[2])
-				elif (key == "space"):
-					self.train_labels = np.vstack(self.train_labels, temp_label[3])
-				elif (key == 'x'):
+				cv2.imshow("Frame", image)
+				if cv2.waitKey(1) & 0xFF == ord('q'):
 					break
 				# Increase frame number
 				frame += 1
 
 			# Save the label array
 			self.train_labels = self.train_labels[1:, :]
-			np.save('training_labels/test.npy')
+			np.save('training_labels/test.npy', self.train_labels)
 			# Print some stats
-			print(self.train_labels.shape())
-			print(frame)
+			print('\nNumber of training labels: '+self.train_labels.shape)
+			print('Number of frames: '+frame)
 
 		finally:
 			self.connection.close()
