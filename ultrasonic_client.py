@@ -56,7 +56,7 @@ class UltrasonicClient(object):
         self.sensor = UltrasonicSensor()
         self.stream()
 
-    def stream(self)
+    def stream(self):
         # Send distance data to server on another computer
         try:
             while True:

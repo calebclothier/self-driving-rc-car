@@ -47,11 +47,8 @@ class StreamDrive(object):
                 # Reset stream for next capture
                 stream.seek(0)
                 stream.truncate()
-                # Write sensor data to server
-                distance = self.sensor.measure_average()
-                self.server_connection.send(struct.pack("f", distance))
                 # Get the pressed key
-                key = self.server_connection.recv(1024).decode()
+                key = self.client_socket.recv(1024).decode()
                 if (key == "w"):
                     self.motor.forward()
                 elif (key == "s"):
@@ -74,8 +71,6 @@ class StreamDrive(object):
         finally:
             self.client_connection.close()
             self.client_socket.close()
-            self.server_connection.close()
-            self.server_socket.close()
             GPIO.cleanup()
 
 if __name__ == '__main__':

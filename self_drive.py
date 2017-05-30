@@ -74,7 +74,7 @@ class HaarCascade(object):
             image,
             scaleFactor=1.1,
             minNeighbors=5,
-            minSize=(30, 30),
+            minSize=(20, 20),
             flags=cv2.CASCADE_SCALE_IMAGE)
         # Draw rectangle around stop sign
         for (x, y, width, height) in self.stop_signs:
@@ -93,12 +93,15 @@ class HaarCascade(object):
 
 class UltrasonicSensorHandler(socketserver.BaseRequestHandler):
 
+    # Initialize data variable
     data = " "
 
     def handle(self):
+        # Initialize global distance variable
         global distance
         try:
             while self.data:
+                # Receive distance measurement from Pi
                 self.data = self.request.recv(1024)
                 distance = int(self.data[0])
         finally:
@@ -127,6 +130,7 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
 
     def handle(self):
         print("Streaming...")
+        # Initialize some variables
         global distance
         d_stop_sign = 25
         stop_start = 0
@@ -163,7 +167,9 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                 # If the distance is below threshold, stop the car
                 if distance is not None and distance < 30:
                     self.stop()
-                    print("Obstacle detected: stopping car")
+                    if (frame % 20) == 0:
+                        print("Obstacle detected: stopping car")
+                # If a stop sign is detected, stop for 5 seconds
                 elif 0 < d_stop_sign < 25 and stop_sign_active:
                     print("Stop sign ahead")
                     self.stop()
@@ -175,6 +181,7 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                         print("Waited for 5 seconds")
                         stop_flag = False
                         stop_sign_active = False
+                # Otherwise, just drive normally
                 else:
                     self.steer(prediction)
                     d_stop_sign = 25
@@ -186,6 +193,7 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                 frame += 1
                 if cv2.waitKey(1) == int(ord('x')):
                     break
+                # Print FPS every 100 frames
                 if (frame % 100) == 0:
                     fps = frame / (time.time() - start)
                     print("Frames per second: ", fps)
