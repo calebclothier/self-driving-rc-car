@@ -76,8 +76,8 @@ class CollectTrainingData(object):
                 # Rewind the stream, open it as an image with OpenCV, convert to RGB
                 image_stream.seek(0)
                 data = np.fromstring(image_stream.getvalue(), dtype=np.uint8)
-                #image = cv2.imdecode(data, cv2.IMREAD_GRAYSCALE)
-                image = cv2.imdecode(data, cv2.IMREAD_COLOR)
+                image = cv2.imdecode(data, cv2.IMREAD_GRAYSCALE)
+                #image = cv2.imdecode(data, cv2.IMREAD_COLOR)
                 # Save the image
                 if frame > 0:
                     cv2.imwrite('training_images/run_%d/frame_%d.jpg'%(self.run_number, frame), image)

@@ -42,11 +42,11 @@ class UltrasonicSensor(object):
 
     def measure_average(self):
         # Record the distance at three times and average the results
-        distance1 = measure()
+        distance1 = self.measure()
         time.sleep(0.1)
-        distance2 = measure()
+        distance2 = self.measure()
         time.sleep(0.1)
-        distance3 = measure()
+        distance3 = self.measure()
         average = (distance1 + distance2 + distance3) / 3
         return average
 
@@ -96,6 +96,9 @@ class StreamDrive(object):
                 # Reset stream for next capture
                 stream.seek(0)
                 stream.truncate()
+                # Write sensor data to server
+                distance = self.sensor.measure_average()
+                self.server_connection.send(struct.pack("f", distance))
                 # Get the pressed key
                 key = self.server_connection.recv(1024).decode()
                 if (key == "w"):
@@ -114,9 +117,6 @@ class StreamDrive(object):
                 else:
                     self.motor.stop()
                 key = ""
-                # Write sensor data to server
-                distance = self.sensor.measure_average()
-                self.server_connection.send(struct.pack("f", distance))
             # Write a length of 0 to the stream to signal we're done
             self.client_connection.write(struct.pack('<L', 0))
 
