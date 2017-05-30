@@ -6,50 +6,6 @@ import io
 import socket
 import picamera
 
-class UltrasonicSensor(object):
-
-    def __init__(self):
-        #GPIO Mode (BOARD / BCM)
-        GPIO.setmode(GPIO.BOARD)
-        #set GPIO Pins
-        self.GPIO_TRIGGER = 16
-        self.GPIO_ECHO = 18
-        #set GPIO direction (IN / OUT)
-        GPIO.setup(self.GPIO_TRIGGER, GPIO.OUT)
-        GPIO.setup(self.GPIO_ECHO, GPIO.IN)
-        
-    def measure(self):
-        # Set Trigger to HIGH
-        GPIO.output(self.GPIO_TRIGGER, True)
-        # Set Trigger after 0.01ms to LOW
-        time.sleep(0.00001)
-        GPIO.output(self.GPIO_TRIGGER, False)
-        # Initialize start and stop times
-        start = time.time()
-        stop = time.time()
-        # Save start time
-        while GPIO.input(self.GPIO_ECHO) == 0:
-            start = time.time()
-        # Save time of arrival
-        while GPIO.input(self.GPIO_ECHO) == 1:
-            stop = time.time()
-        # Time difference between start and arrival
-        time_elapsed = stop - start
-        # Multiply with the sonic speed (34300 cm/s)
-        # and divide by 2, because there and back
-        distance = (time_elapsed * 34300) / 2
-        return distance
-
-    def measure_average(self):
-        # Record the distance at three times and average the results
-        distance1 = self.measure()
-        time.sleep(0.1)
-        distance2 = self.measure()
-        time.sleep(0.1)
-        distance3 = self.measure()
-        average = (distance1 + distance2 + distance3) / 3
-        return average
-
 class StreamDrive(object):
 
     def __init__(self):
@@ -60,14 +16,9 @@ class StreamDrive(object):
         leftPin = 13
         rightPin = 15
         controlStraightPin = 29
+        # Initialize motor class
         self.motor = Motor(forwardPin, backwardPin, controlStraightPin, leftPin, rightPin)
-        self.sensor = UltrasonicSensor()
-        # Initialize server for receiving driving instructions
-        self.server_socket = socket.socket()
-        self.server_socket.bind(('0.0.0.0', 8000))
-        self.server_socket.listen(0)
-        self.server_connection = self.server_socket.accept()[0]
-        # Initialize client for streaming camera pictures
+        # Initialize client for streaming camera pictures and receiving driving instructions
         self.client_socket = socket.socket()
         self.client_socket.connect(('192.168.1.11', 8000))
         # Make a file-like object out of the client connection

@@ -1,7 +1,5 @@
 import struct
 import socket
-import socketserver
-import threading
 import io
 import os
 import time
@@ -10,9 +8,6 @@ import numpy as np
 import tensorflow as tf
 from keras.models import model_from_json
 import cv2
-
-# Distance data from ultrasonic sensor
-distance = " "
 
 class NVIDIAModel(object):
 
@@ -91,24 +86,13 @@ class HaarCascade(object):
                 (image.shape[1] - x_shift, image.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         return distance
 
-class UltrasonicSensorHandler(socketserver.BaseRequestHandler):
 
-    data = " "
+class RCControl(object):
 
-    def handle(self):
-        global distance
-        try:
-            while self.data:
-                self.data = self.request.recv(1024)
-                distance = int(self.data[0])
-        finally:
-            print("Connection closed on sensor thread")
-
-class VideoStreamHandler(socketserver.StreamRequestHandler):
-
-    # Initialize some classes
-    NVIDIA_model = NVIDIAModel()
-    cascade = HaarCascade()
+    def __init__(self):
+        # Initialize client for sending driving instructions to the RPi
+        self.client_socket = socket.socket()
+        self.client_socket.connect(('192.168.1.18', 8000))
 
     def steer(self, prediction):
         if (prediction == 0):
@@ -119,34 +103,58 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
             key = "d"
         else:
             key = "space"
-        self.wfile.write(key.encode())
+        self.client_socket.send(key.encode())
 
     def stop(self):
         key = "space"
-        self.wfile.write(key.encode())
+        self.client_socket.send(key.encode())
 
-    def handle(self):
-        print("Streaming...")
-        global distance
-        d_stop_sign = 25
-        stop_start = 0
-        stop_end = 0
-        stop_flag = False
-        stop_sign_active = True
-        time_after_stop = 0
-        start = time.time()
-        frame = 0
+    def sense(self):
+        # Receive distance data from onboard ultrasonic sensor
+        distance = struct.unpack("f", self.client_socket.recv(1024))
+        return distance
+
+    def close(self):
+        self.client_socket.close()
+
+class SelfDrive(object):
+
+    def __init__(self):
+        # Initialize some classes
+        self.NVIDIA_model = NVIDIAModel()
+        self.cascade = HaarCascade()
+        self.rc_car = RCControl()
+        # Initialize server for receiving camera frames from the RPi
+        self.server_socket = socket.socket()
+        self.server_socket.bind(('0.0.0.0', 8000))
+        self.server_socket.listen(0)
+        # Accept a single connection and make a file-like object out of it
+        self.connection, self.client_address = self.server_socket.accept()
+        print("Connection from: ", self.client_address)
+        self.connection = self.connection.makefile('rb')
+        self.stream()
+
+    def stream(self):
         try:
+            print("Streaming...")
+            d_stop_sign = 25
+            stop_start = 0
+            stop_end = 0
+            stop_flag = False
+            stop_sign_active = True
+            time_after_stop = 0
+            start = time.time()
+            frame = 0
             while True:
                 # Read the length of the image as a 32-bit unsigned int. If the
                 # length is zero, quit the loop
-                image_len = struct.unpack('<L', self.rfile.read(struct.calcsize('<L')))[0]
+                image_len = struct.unpack('<L', self.connection.read(struct.calcsize('<L')))[0]
                 if not image_len:
                     break
                 # Construct a stream to hold the image data and read the image
                 # data from the connection
                 image_stream = io.BytesIO()
-                image_stream.write(self.rfile.read(image_len))
+                image_stream.write(self.connection.read(image_len))
                 # Rewind the stream, open it as an image with OpenCV, convert to gray
                 image_stream.seek(0)
                 data = np.fromstring(image_stream.getvalue(), dtype=np.uint8)
@@ -155,6 +163,8 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                 new_image = image.astype(np.float32)
                 new_image = self.NVIDIA_model.process(new_image)
                 prediction = self.NVIDIA_model.predict(new_image)
+                # Get distance from ultrasonic sensor
+                distance = int(self.rc_car.sense()[0])
                 # Get v param for stop sign detection
                 v_param = self.cascade.detect(image)
                 # Calculate stop sign distance
@@ -162,11 +172,11 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                     d_stop_sign = self.cascade.calculate_distance(v_param, 300, image)
                 # If the distance is below threshold, stop the car
                 if distance is not None and distance < 30:
-                    self.stop()
+                    self.rc_car.stop()
                     print("Obstacle detected: stopping car")
                 elif 0 < d_stop_sign < 25 and stop_sign_active:
                     print("Stop sign ahead")
-                    self.stop()
+                    self.rc_car.stop()
                     if stop_flag is False:
                         stop_start = time.time()
                         stop_flag = True
@@ -176,7 +186,7 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                         stop_flag = False
                         stop_sign_active = False
                 else:
-                    self.steer(prediction)
+                    self.rc_car.steer(prediction)
                     d_stop_sign = 25
                     if stop_sign_active is False:
                         time_after_stop = time.time() - stop_end
@@ -191,24 +201,19 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                     print("Frames per second: ", fps)
                     frame = 0
                     start = time.time()
+
         finally:
-            print("Connection closed on camera thread")
+            self.connection.close()
+            self.server_socket.close()
+            self.rc_car.close()
 
-class ThreadServer(object):
-
-    def server_thread1(host, port):
-        server = socketserver.TCPServer((host, port), VideoStreamHandler)
-        server.serve_forever()
-
-    def server_thread2(host, port):
-        server = socketserver.TCPServer((host, port), UltrasonicSensorHandler)
-        server.serve_forever()
-
-    distance_thread = threading.Thread(target=server_thread2, args=('192.168.1.11', 8002))
-    distance_thread.start()
-    video_thread = threading.Thread(target=server_thread1('192.168.1.11', 8000))
-    video_thread.start()
-            
 if __name__ == '__main__':
-    ThreadServer()
-    
+    SelfDrive()
+
+
+
+
+
+
+
+
