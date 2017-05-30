@@ -2,6 +2,7 @@ import struct
 import socket
 import time, sys, termios, tty
 import io
+import os
 import numpy as np
 import cv2
 
@@ -10,7 +11,7 @@ class CollectTrainingData(object):
     def __init__(self):
         # Initialize client for sending driving instructions to the RPi
         self.client_socket = socket.socket()
-        self.client_socket.connect(('192.168.1.2', 8000))
+        self.client_socket.connect(('192.168.1.18', 8000))
         # Initialize server for receiving camera frames from the RPi
         self.server_socket = socket.socket()
         self.server_socket.bind(('0.0.0.0', 8000))
@@ -23,6 +24,8 @@ class CollectTrainingData(object):
         self.temp_label = np.zeros((4, 4))
         for i in range(4):
             self.temp_label[i,i] = 1
+        self.run_number = int(input('What number run is this? '))
+        os.makedirs('training_images/run_{}'.format(self.run_number))
         # Start the stream
         self.stream()
 
@@ -39,6 +42,8 @@ class CollectTrainingData(object):
     def stream(self):
         try:
             frame = 0
+            print("Connection from: ", self.client_address)
+            print("Streaming...")
             while True:
                 # Get key input, add to label array, and send to the RPi
                 key = self.get_keys()
@@ -71,10 +76,11 @@ class CollectTrainingData(object):
                 # Rewind the stream, open it as an image with OpenCV, convert to RGB
                 image_stream.seek(0)
                 data = np.fromstring(image_stream.getvalue(), dtype=np.uint8)
-                image = cv2.imdecode(data, 1)
+                #image = cv2.imdecode(data, cv2.IMREAD_GRAYSCALE)
+                image = cv2.imdecode(data, cv2.IMREAD_COLOR)
                 # Save the image
                 if frame > 0:
-                    cv2.imwrite('training_images/frame_{}.jpg'.format(frame), image)
+                    cv2.imwrite('training_images/run_%d/frame_%d.jpg'%(self.run_number, frame), image)
                 # Show the image
                 cv2.imshow("Frame", image)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -84,10 +90,11 @@ class CollectTrainingData(object):
 
             # Save the label array
             self.train_labels = self.train_labels[1:, :]
-            np.save('training_labels/test.npy', self.train_labels)
+            os.makedirs('training_labels/run_{}'.format(self.run_number))
+            np.save('training_labels/run_{}/labels.npy'.format(self.run_number), self.train_labels)
             # Print some stats
-            print('\nNumber of training labels: '+self.train_labels.shape)
-            print('Number of frames: '+frame)
+            print('\nNumber of training labels: '+str(self.train_labels.shape[0]))
+            print('Number of frames: '+str(frame))
 
         finally:
             self.connection.close()
