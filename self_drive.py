@@ -97,6 +97,7 @@ class UltrasonicSensorHandler(socketserver.BaseRequestHandler):
     data = " "
 
     def handle(self):
+        print("Connection from: ", self.client_address)
         print("Streaming ultrasonic data...")
         # Initialize global distance variable
         global distance

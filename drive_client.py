@@ -21,7 +21,7 @@ class DriveClient(object):
         # Initialize motor class
         self.motor = Motor(forwardPin, backwardPin, controlStraightPin, leftPin, rightPin)
         # Initialize client for streaming camera pictures and receiving driving instructions
-        self.client_socket = socket.socket(AF_INET, SOCK_STREAM)
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect(('192.168.1.11', 8000))
         # Make a file-like object out of the client connection
         self.client_connection = self.client_socket.makefile('wb')

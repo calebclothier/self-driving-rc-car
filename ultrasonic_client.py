@@ -53,7 +53,7 @@ class UltrasonicClient(object):
 
     def __init__(self):
         # Create a socket and bind to host
-        self.client_socket = socket.socket(AF_INET, SOCK_STREAM)
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect(('192.168.1.11', 8002))
         self.sensor = UltrasonicSensor()
         self.stream()
