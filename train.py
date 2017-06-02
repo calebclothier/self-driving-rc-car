@@ -10,6 +10,8 @@ from keras.optimizers import SGD
 from keras.regularizers import l2
 import matplotlib.pyplot as plt
 
+from matplotlib import pyplot as plt
+
 def display_image(image):
     cv2.imshow('Image', image)
     cv2.waitKey(0)
@@ -85,14 +87,14 @@ def generate_batch(train_images, train_labels, batch_size=64):
     while True:
         for i in range(len(train_labels)):
             image = process(train_images[i])
-            image = random_distort(image)
+            #image = random_distort(image)
             label = train_labels[i]
             X.append(image)
             y.append(label)
             # Add a flipped version of every image
-            flipped_image, flipped_label = flip(image, label)
-            X.append(flipped_image)
-            y.append(flipped_label)
+            #flipped_image, flipped_label = flip(image, label)
+           #X.append(flipped_image)
+           #y.append(flipped_label)
             # Once a full batch is created, the X and y arrays are reset
             if len(X) == batch_size:
                 yield (np.expand_dims(np.array(X), axis=3), np.array(y))
@@ -142,7 +144,7 @@ def artificial_neural_network():
     # Flatten the image
     model.add(Flatten())
     # Hidden layer
-    model.add(Dense(32, activation='relu'))
+    model.add(Dense(32, activation='tanh'))
     # Output layer
     model.add(Dense(4, activation='softmax'))
     # Compile the model
@@ -154,7 +156,7 @@ def train_NVIDIA_model(train_images, train_labels):
     model = NVIDIA_model()
     model.summary()
     model.fit_generator(generate_batch(train_images, train_labels), 
-        steps_per_epoch=100, epochs=60, verbose=2)
+        steps_per_epoch=30, epochs=30, verbose=2)
     print('Saving model weights and configuration file.')
     # Save model weights
     model_name = input('Enter model name: ')
@@ -168,7 +170,7 @@ def train_ANN(train_images, train_labels):
     model = artificial_neural_network()
     model.summary()
     model.fit_generator(generate_batch(train_images, train_labels), 
-        steps_per_epoch=100, epochs=30, verbose=2)
+        steps_per_epoch=30, epochs=30, verbose=2)
     print('Saving model weights and configuration file.')
     # Save model weights
     model_name = input('Enter model name: ')
@@ -183,8 +185,7 @@ if __name__ == '__main__':
     data = np.load('training_data/data.npz')
     train_images = data['train_images']
     train_labels = data['train_labels']
-    #train_NVIDIA_model(train_images, train_labels)
-    train_ANN(train_images, train_labels)
-    
+    train_NVIDIA_model(train_images, train_labels)
+    #train_ANN(train_images, train_labels)
 
 

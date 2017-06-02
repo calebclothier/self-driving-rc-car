@@ -6,7 +6,7 @@ import io
 import socket
 import picamera
 
-class StreamDrive(object):
+class DriveClient(object):
 
     def __init__(self):
         # Set up GPIO for RPi
@@ -67,14 +67,13 @@ class StreamDrive(object):
                 key = ""
             # Write a length of 0 to the stream to signal we're done
             self.client_connection.write(struct.pack('<L', 0))
-
         finally:
             self.client_connection.close()
             self.client_socket.close()
             GPIO.cleanup()
 
 if __name__ == '__main__':
-    StreamDrive()
+    DriveClient()
 
 
 

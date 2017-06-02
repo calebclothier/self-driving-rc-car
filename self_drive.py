@@ -30,12 +30,12 @@ class NVIDIAModel(object):
 
     def blur(self, image):
         """Apply a slight blur to the image"""
-        image = cv2.GaussianBlur(image, (3,3), 0)
+        image = cv2.GaussianBlur(image, (3, 3), 0)
         return image
 
     def resize(self, image):
         """Resize the image in accordance with the nVidia paper model"""
-        image = cv2.resize(image,(200, 66), interpolation=cv2.INTER_AREA)
+        image = cv2.resize(image, (200, 66), interpolation=cv2.INTER_AREA)
         return image
 
     def normalize(self, image):
@@ -74,7 +74,7 @@ class HaarCascade(object):
             image,
             scaleFactor=1.1,
             minNeighbors=5,
-            minSize=(20, 20),
+            minSize=(30, 30),
             flags=cv2.CASCADE_SCALE_IMAGE)
         # Draw rectangle around stop sign
         for (x, y, width, height) in self.stop_signs:
@@ -85,7 +85,7 @@ class HaarCascade(object):
 
     def calculate_distance(self, v, x_shift, image):
         # Compute aselfnd return the distance from the target point to the camera
-        distance = self.h / math.tan(self.alpha + math.atan((v - self.v0) / self.ay))
+        distance = self.h / math.tan(self.alpha + math.atan((v - self.v0) / self.ay)) - 18 # account for car front
         if distance > 0:
             cv2.putText(image, "%.1fcm" % distance,
                 (image.shape[1] - x_shift, image.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
@@ -97,6 +97,7 @@ class UltrasonicSensorHandler(socketserver.BaseRequestHandler):
     data = " "
 
     def handle(self):
+        print("Streaming ultrasonic data...")
         # Initialize global distance variable
         global distance
         try:
@@ -129,10 +130,11 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
         self.wfile.write(key.encode())
 
     def handle(self):
-        print("Streaming...")
+        print("Connection from: ", self.client_address)
+        print("Streaming video...")
         # Initialize some variables
         global distance
-        d_stop_sign = 25
+        d_stop_sign = 10
         stop_start = 0
         stop_end = 0
         stop_flag = False
@@ -170,10 +172,10 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                     if (frame % 20) == 0:
                         print("Obstacle detected: stopping car")
                 # If a stop sign is detected, stop for 5 seconds
-                elif 0 < d_stop_sign < 25 and stop_sign_active:
-                    print("Stop sign ahead")
+                elif 0 < d_stop_sign < 10 and stop_sign_active:
                     self.stop()
                     if stop_flag is False:
+                        print("Stop sign ahead")
                         stop_start = time.time()
                         stop_flag = True
                     stop_end = time.time()
@@ -184,14 +186,15 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                 # Otherwise, just drive normally
                 else:
                     self.steer(prediction)
-                    d_stop_sign = 25
+                    d_stop_sign = 10
                     if stop_sign_active is False:
                         time_after_stop = time.time() - stop_end
                         if time_after_stop > 5:
                             stop_sign_active = True
                 cv2.imshow("Frame", image)
                 frame += 1
-                if cv2.waitKey(1) == int(ord('x')):
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    print("Exit key pressed")
                     break
                 # Print FPS every 100 frames
                 if (frame % 100) == 0:
