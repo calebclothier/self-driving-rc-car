@@ -9,6 +9,8 @@ import picamera
 class DriveClient(object):
 
     def __init__(self):
+        # Turn off warnings
+        GPIO.setwarnings(False)
         # Set up GPIO for RPi
         GPIO.setmode(GPIO.BOARD)
         forwardPin = 7
@@ -19,7 +21,7 @@ class DriveClient(object):
         # Initialize motor class
         self.motor = Motor(forwardPin, backwardPin, controlStraightPin, leftPin, rightPin)
         # Initialize client for streaming camera pictures and receiving driving instructions
-        self.client_socket = socket.socket()
+        self.client_socket = socket.socket(AF_INET, SOCK_STREAM)
         self.client_socket.connect(('192.168.1.11', 8000))
         # Make a file-like object out of the client connection
         self.client_connection = self.client_socket.makefile('wb')

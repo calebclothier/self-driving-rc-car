@@ -4,7 +4,7 @@ import socketserver
 import threading
 import io
 import os
-import time
+import time, sys, termios, tty
 import math
 import numpy as np
 import tensorflow as tf
@@ -129,12 +129,22 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
         key = "space"
         self.wfile.write(key.encode())
 
+    def get_keys(self):
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            key = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return key
+
     def handle(self):
         print("Connection from: ", self.client_address)
         print("Streaming video...")
         # Initialize some variables
         global distance
-        d_stop_sign = 10
+        d_stop_sign = 12
         stop_start = 0
         stop_end = 0
         stop_flag = False
@@ -172,7 +182,7 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                     if (frame % 20) == 0:
                         print("Obstacle detected: stopping car")
                 # If a stop sign is detected, stop for 5 seconds
-                elif 0 < d_stop_sign < 10 and stop_sign_active:
+                elif 0 < d_stop_sign < 12 and stop_sign_active:
                     self.stop()
                     if stop_flag is False:
                         print("Stop sign ahead")
@@ -186,7 +196,7 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                 # Otherwise, just drive normally
                 else:
                     self.steer(prediction)
-                    d_stop_sign = 10
+                    d_stop_sign = 12
                     if stop_sign_active is False:
                         time_after_stop = time.time() - stop_end
                         if time_after_stop > 5:
@@ -194,14 +204,16 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                 cv2.imshow("Frame", image)
                 frame += 1
                 if cv2.waitKey(1) & 0xFF == ord('q'):
+                    self.stop()
                     print("Exit key pressed")
                     break
                 # Print FPS every 100 frames
-                if (frame % 100) == 0:
-                    fps = frame / (time.time() - start)
-                    print("Frames per second: ", fps)
-                    frame = 0
-                    start = time.time()
+                #if (frame % 100) == 0:
+                #    fps = frame / (time.time() - start)
+                #    print("Frames per second: ", fps)
+                #    frame = 0
+                #    start = time.time()
+            cv2.destroyAllWindows()
         finally:
             print("Connection closed on camera thread")
 

@@ -6,12 +6,14 @@ import struct
 class UltrasonicSensor(object):
 
     def __init__(self):
-        #GPIO Mode (BOARD / BCM)
+        # GPIO Mode (BOARD / BCM)
         GPIO.setmode(GPIO.BOARD)
-        #set GPIO Pins
+        # Turn off warnings
+        GPIO.setwarnings(False)
+        # Set GPIO Pins
         self.GPIO_TRIGGER = 16
         self.GPIO_ECHO = 18
-        #set GPIO direction (IN / OUT)
+        # Set GPIO direction (IN / OUT)
         GPIO.setup(self.GPIO_TRIGGER, GPIO.OUT)
         GPIO.setup(self.GPIO_ECHO, GPIO.IN)
         
@@ -51,7 +53,7 @@ class UltrasonicClient(object):
 
     def __init__(self):
         # Create a socket and bind to host
-        self.client_socket = socket.socket()
+        self.client_socket = socket.socket(AF_INET, SOCK_STREAM)
         self.client_socket.connect(('192.168.1.11', 8002))
         self.sensor = UltrasonicSensor()
         self.stream()
@@ -59,12 +61,15 @@ class UltrasonicClient(object):
     def stream(self):
         # Send distance data to server on another computer
         try:
+            i = 1
             while True:
                 # Write sensor data to server
                 distance = self.sensor.measure_average()
-                print('Distance: %.1f' % distance)
+                if i % 10 == 0:
+                    print('Distance: %.1f' % distance)
                 self.client_socket.sendall(struct.pack("f", distance))
-                time.sleep(0.5)
+                time.sleep(0.1)
+                i += 1
         finally:
             self.client_socket.close()
             GPIO.cleanup()

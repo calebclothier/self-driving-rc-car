@@ -10,8 +10,6 @@ from keras.optimizers import SGD
 from keras.regularizers import l2
 import matplotlib.pyplot as plt
 
-from matplotlib import pyplot as plt
-
 def display_image(image):
     cv2.imshow('Image', image)
     cv2.waitKey(0)
@@ -87,14 +85,14 @@ def generate_batch(train_images, train_labels, batch_size=64):
     while True:
         for i in range(len(train_labels)):
             image = process(train_images[i])
-            #image = random_distort(image)
+            image = random_distort(image)
             label = train_labels[i]
             X.append(image)
             y.append(label)
             # Add a flipped version of every image
-            #flipped_image, flipped_label = flip(image, label)
-           #X.append(flipped_image)
-           #y.append(flipped_label)
+            flipped_image, flipped_label = flip(image, label)
+            X.append(flipped_image)
+            y.append(flipped_label)
             # Once a full batch is created, the X and y arrays are reset
             if len(X) == batch_size:
                 yield (np.expand_dims(np.array(X), axis=3), np.array(y))
@@ -130,7 +128,7 @@ def NVIDIA_model():
     # FC4
     model.add(Dense(10, activation='relu', kernel_regularizer=l2(0.001)))
     # Output
-    model.add(Dense(4))
+    #model.add(Dense(4))
     model.add(Dense(4, activation='softmax'))
     # Compile the model
     #model.compile(optimizer='adam', loss='mse', metrics=['accuracy'])
@@ -156,7 +154,7 @@ def train_NVIDIA_model(train_images, train_labels):
     model = NVIDIA_model()
     model.summary()
     model.fit_generator(generate_batch(train_images, train_labels), 
-        steps_per_epoch=30, epochs=30, verbose=2)
+        steps_per_epoch=60, epochs=30, verbose=2)
     print('Saving model weights and configuration file.')
     # Save model weights
     model_name = input('Enter model name: ')
