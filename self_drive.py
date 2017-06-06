@@ -4,7 +4,7 @@ import socketserver
 import threading
 import io
 import os
-import time, sys, termios, tty
+import time
 import math
 import numpy as np
 import tensorflow as tf
@@ -105,7 +105,7 @@ class UltrasonicSensorHandler(socketserver.BaseRequestHandler):
             while self.data:
                 # Receive distance measurement from Pi
                 self.data = self.request.recv(1024)
-                distance = int(self.data[0])
+                distance = int(struct.unpack("f", self.data)[0])
         finally:
             print("Connection closed on sensor thread")
 
@@ -129,16 +129,6 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
     def stop(self):
         key = "space"
         self.wfile.write(key.encode())
-
-    def get_keys(self):
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(sys.stdin.fileno())
-            key = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return key
 
     def handle(self):
         print("Connection from: ", self.client_address)
@@ -180,8 +170,7 @@ class VideoStreamHandler(socketserver.StreamRequestHandler):
                 # If the distance is below threshold, stop the car
                 if distance is not None and distance < 30:
                     self.stop()
-                    if (frame % 20) == 0:
-                        print("Obstacle detected: stopping car")
+                    print("Obstacle detected: stopping car")
                 # If a stop sign is detected, stop for 5 seconds
                 elif 0 < d_stop_sign < 12 and stop_sign_active:
                     self.stop()

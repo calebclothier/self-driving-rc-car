@@ -65,10 +65,9 @@ class UltrasonicClient(object):
             while True:
                 # Write sensor data to server
                 distance = self.sensor.measure_average()
-                if i % 10 == 0:
-                    print('Distance: %.1f' % distance)
+                print('Distance: %.1f' % distance)
                 self.client_socket.sendall(struct.pack("f", distance))
-                time.sleep(0.1)
+                time.sleep(0.5)
                 i += 1
         finally:
             self.client_socket.close()
